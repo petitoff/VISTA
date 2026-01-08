@@ -1,20 +1,49 @@
-import { Component, For, Show } from "solid-js";
+import { Component, For, Show, createEffect, onCleanup } from "solid-js";
 import { VideoCard } from "./VideoCard";
 import type { BrowseItem, SearchItem } from "../services/api";
-import { FiFolder, FiFilm, FiInbox } from "solid-icons/fi";
+import { FiFolder, FiFilm, FiInbox, FiLoader } from "solid-icons/fi";
 
 interface VideoGridProps {
   items: BrowseItem[];
   searchResults?: SearchItem[];
   isSearching: boolean;
   loading: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
   onItemClick: (item: BrowseItem) => void;
   onSearchResultClick: (item: SearchItem) => void;
+  onLoadMore: () => void;
 }
 
 export const VideoGrid: Component<VideoGridProps> = (props) => {
+  let scrollRef: HTMLDivElement | undefined;
+
+  // Infinite scroll
+  createEffect(() => {
+    if (!scrollRef) return;
+
+    const handleScroll = () => {
+      if (
+        props.loading ||
+        props.loadingMore ||
+        !props.hasMore ||
+        props.isSearching
+      )
+        return;
+
+      const { scrollTop, scrollHeight, clientHeight } = scrollRef!;
+      // Load more when 200px from bottom
+      if (scrollHeight - scrollTop - clientHeight < 200) {
+        props.onLoadMore();
+      }
+    };
+
+    scrollRef.addEventListener("scroll", handleScroll);
+    onCleanup(() => scrollRef?.removeEventListener("scroll", handleScroll));
+  });
+
   return (
-    <div class="flex-1 overflow-auto p-6">
+    <div ref={scrollRef} class="flex-1 overflow-auto p-6">
       {/* Loading State */}
       <Show when={props.loading}>
         <div class="thumbnail-grid">
@@ -85,6 +114,21 @@ export const VideoGrid: Component<VideoGridProps> = (props) => {
               )}
             </For>
           </div>
+
+          {/* Load More Indicator */}
+          <Show when={props.loadingMore}>
+            <div class="flex items-center justify-center py-8">
+              <FiLoader size={24} class="animate-spin text-accent" />
+              <span class="ml-2 text-text-secondary">Loading more...</span>
+            </div>
+          </Show>
+
+          {/* Has More Indicator */}
+          <Show when={!props.loadingMore && props.hasMore}>
+            <div class="flex items-center justify-center py-4 text-text-muted text-sm">
+              Scroll to load more
+            </div>
+          </Show>
         </Show>
       </Show>
     </div>

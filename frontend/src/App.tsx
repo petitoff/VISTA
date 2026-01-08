@@ -1,9 +1,9 @@
-import { Component, createSignal, createResource, Show } from "solid-js";
+import { Component, createSignal, createEffect, Show } from "solid-js";
 import {
   api,
   type BrowseItem,
+  type BrowseResponse,
   type SearchItem,
-  type SearchResult,
 } from "./services/api";
 import { PathBreadcrumb } from "./components/PathBreadcrumb";
 import { SearchBar } from "./components/SearchBar";
@@ -11,16 +11,87 @@ import { VideoGrid } from "./components/VideoGrid";
 import { VideoPlayer } from "./components/VideoPlayer";
 import { FiVideo, FiHardDrive } from "solid-icons/fi";
 
+const ITEMS_PER_PAGE = 50;
+
 const App: Component = () => {
   const [currentPath, setCurrentPath] = createSignal("");
   const [searchQuery, setSearchQuery] = createSignal("");
   const [selectedVideo, setSelectedVideo] = createSignal<string | null>(null);
 
-  const [browseData, { refetch }] = createResource(currentPath, api.browse);
-  const [searchData] = createResource(searchQuery, async (q) => {
-    if (!q) return null;
-    return api.search(q);
+  // Pagination state
+  const [items, setItems] = createSignal<BrowseItem[]>([]);
+  const [page, setPage] = createSignal(1);
+  const [hasMore, setHasMore] = createSignal(false);
+  const [loading, setLoading] = createSignal(false);
+  const [loadingMore, setLoadingMore] = createSignal(false);
+
+  // Search state
+  const [searchResults, setSearchResults] = createSignal<SearchItem[]>([]);
+  const [searchLoading, setSearchLoading] = createSignal(false);
+
+  // Load browse data
+  const loadData = async (
+    path: string,
+    pageNum: number,
+    append: boolean = false
+  ) => {
+    if (pageNum === 1) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+
+    try {
+      const data: BrowseResponse = await api.browse(
+        path,
+        pageNum,
+        ITEMS_PER_PAGE
+      );
+
+      if (append) {
+        setItems((prev) => [...prev, ...data.items]);
+      } else {
+        setItems(data.items);
+      }
+
+      setPage(data.page);
+      setHasMore(data.page < data.totalPages);
+    } catch (err) {
+      console.error("Failed to load:", err);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  // Load on path change
+  createEffect(() => {
+    const path = currentPath();
+    setPage(1);
+    setItems([]);
+    loadData(path, 1, false);
   });
+
+  // Search effect
+  createEffect(() => {
+    const query = searchQuery();
+    if (!query) {
+      setSearchResults([]);
+      return;
+    }
+
+    setSearchLoading(true);
+    api
+      .search(query)
+      .then((data) => setSearchResults(data.results))
+      .catch(() => setSearchResults([]))
+      .finally(() => setSearchLoading(false));
+  });
+
+  const handleLoadMore = () => {
+    if (loadingMore() || !hasMore()) return;
+    loadData(currentPath(), page() + 1, true);
+  };
 
   const handleItemClick = (item: BrowseItem) => {
     if (item.type === "directory") {
@@ -83,12 +154,15 @@ const App: Component = () => {
 
       {/* Main Content */}
       <VideoGrid
-        items={browseData()?.items || []}
-        searchResults={searchData()?.results}
+        items={items()}
+        searchResults={searchResults()}
         isSearching={isSearching()}
-        loading={browseData.loading || (isSearching() && searchData.loading)}
+        loading={loading() || (isSearching() && searchLoading())}
+        loadingMore={loadingMore()}
+        hasMore={hasMore()}
         onItemClick={handleItemClick}
         onSearchResultClick={handleSearchResultClick}
+        onLoadMore={handleLoadMore}
       />
 
       {/* Video Player Modal */}

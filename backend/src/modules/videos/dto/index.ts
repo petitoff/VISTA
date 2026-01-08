@@ -2,6 +2,11 @@ export class BrowseResponseDto {
   path: string;
   hostPath: string; // Real path on host for display
   items: BrowseItemDto[];
+  // Pagination
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
 export class BrowseItemDto {

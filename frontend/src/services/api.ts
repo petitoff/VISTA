@@ -14,6 +14,11 @@ export interface BrowseResponse {
   path: string;
   hostPath: string;
   items: BrowseItem[];
+  // Pagination
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
 export interface VideoMetadata {
@@ -42,10 +47,17 @@ export interface SearchItem {
 }
 
 export const api = {
-  async browse(path: string = ""): Promise<BrowseResponse> {
-    const res = await fetch(
-      `${API_BASE}/videos/browse?path=${encodeURIComponent(path)}`
-    );
+  async browse(
+    path: string = "",
+    page: number = 1,
+    limit: number = 50
+  ): Promise<BrowseResponse> {
+    const params = new URLSearchParams({
+      path,
+      page: String(page),
+      limit: String(limit),
+    });
+    const res = await fetch(`${API_BASE}/videos/browse?${params}`);
     if (!res.ok) throw new Error("Failed to browse");
     return res.json();
   },

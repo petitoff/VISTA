@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import ffmpeg from 'fluent-ffmpeg';
+import { Worker } from 'worker_threads';
 import { CacheManagerService } from './cache-manager.service';
 import { VideosService } from '../videos/videos.service';
 
@@ -27,17 +27,13 @@ export class ThumbnailsService {
     const cachePath = this.cacheManager.getCachePath();
     const thumbPath = join(cachePath, thumbFilename);
 
-    this.logger.log(`Looking for thumbnail at: ${thumbPath}`);
-
     try {
       await fs.access(thumbPath);
       await this.cacheManager.updateAccessTime(thumbFilename);
-      this.logger.log(`Found existing thumbnail: ${thumbPath}`);
       return thumbPath;
     } catch {
-      // Thumbnail doesn't exist, generate it
-      this.logger.log(`Generating new thumbnail for: ${videoRelativePath}`);
-      return this.generateThumbnail(
+      this.logger.log(`Generating thumbnail via worker: ${videoRelativePath}`);
+      return this.generateThumbnailWithWorker(
         videoRelativePath,
         thumbPath,
         thumbFilename,
@@ -45,35 +41,53 @@ export class ThumbnailsService {
     }
   }
 
-  private async generateThumbnail(
+  private async generateThumbnailWithWorker(
     videoRelativePath: string,
     thumbPath: string,
     thumbFilename: string,
   ): Promise<string> {
     const videoPath = this.videosService.getAbsolutePath(videoRelativePath);
+    const cachePath = this.cacheManager.getCachePath();
 
     return new Promise((resolve, reject) => {
-      ffmpeg(videoPath)
-        .screenshots({
-          timestamps: ['1'],
-          filename: thumbFilename,
-          folder: this.cacheManager.getCachePath(),
-          size: '320x180',
-        })
-        .on('end', async () => {
+      // In development, we use the .ts file via ts-node or compiled .js
+      // In production, we use the .js file.
+      // NestJS builds .ts files to .js in the dist folder.
+      const workerPath = join(__dirname, 'thumbnail.worker.js');
+
+      const worker = new Worker(workerPath, {
+        workerData: {
+          videoPath,
+          thumbFilename,
+          cachePath,
+        },
+      });
+
+      worker.on('message', async (message) => {
+        if (message.success) {
           try {
             const stats = await fs.stat(thumbPath);
             await this.cacheManager.registerFile(thumbFilename, stats.size);
-            this.logger.log(`Generated thumbnail: ${thumbFilename}`);
+            this.logger.log(`Worker generated thumbnail: ${thumbFilename}`);
             resolve(thumbPath);
           } catch (err) {
             reject(err);
           }
-        })
-        .on('error', (err) => {
-          this.logger.error(`Failed to generate thumbnail: ${err.message}`);
-          reject(err);
-        });
+        } else {
+          reject(new Error(message.error || 'Worker failed'));
+        }
+      });
+
+      worker.on('error', (err) => {
+        this.logger.error(`Worker error: ${err.message}`);
+        reject(err);
+      });
+
+      worker.on('exit', (code) => {
+        if (code !== 0) {
+          reject(new Error(`Worker stopped with exit code ${code}`));
+        }
+      });
     });
   }
 }

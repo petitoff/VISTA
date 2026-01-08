@@ -43,7 +43,11 @@ export class VideosService {
     return this.allowedExtensions.includes(ext);
   }
 
-  async browseDirectory(relativePath: string = ''): Promise<BrowseResponseDto> {
+  async browseDirectory(
+    relativePath: string = '',
+    page: number = 1,
+    limit: number = 50,
+  ): Promise<BrowseResponseDto> {
     const absolutePath = this.resolvePath(relativePath);
 
     try {
@@ -53,7 +57,7 @@ export class VideosService {
     }
 
     const entries = await fs.readdir(absolutePath, { withFileTypes: true });
-    const items: BrowseItemDto[] = [];
+    const allItems: BrowseItemDto[] = [];
 
     for (const entry of entries) {
       if (entry.name.startsWith('.')) continue;
@@ -61,7 +65,7 @@ export class VideosService {
       const itemPath = join(relativePath, entry.name);
 
       if (entry.isDirectory()) {
-        items.push({
+        allItems.push({
           name: entry.name,
           type: 'directory',
           path: itemPath,
@@ -69,7 +73,7 @@ export class VideosService {
         });
       } else if (this.isVideoFile(entry.name)) {
         const stats = await fs.stat(join(absolutePath, entry.name));
-        items.push({
+        allItems.push({
           name: entry.name,
           type: 'video',
           path: itemPath,
@@ -79,17 +83,28 @@ export class VideosService {
       }
     }
 
-    items.sort((a, b) => {
+    // Sort: directories first, then by name
+    allItems.sort((a, b) => {
       if (a.type !== b.type) {
         return a.type === 'directory' ? -1 : 1;
       }
       return a.name.localeCompare(b.name);
     });
 
+    // Paginate
+    const total = allItems.length;
+    const totalPages = Math.ceil(total / limit);
+    const startIdx = (page - 1) * limit;
+    const items = allItems.slice(startIdx, startIdx + limit);
+
     return {
       path: relativePath,
       hostPath: this.toHostPath(relativePath),
       items,
+      page,
+      limit,
+      total,
+      totalPages,
     };
   }
 

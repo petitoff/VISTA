@@ -7,8 +7,14 @@ export class VideosController {
   constructor(private readonly videosService: VideosService) {}
 
   @Get('browse')
-  async browse(@Query('path') path: string = ''): Promise<BrowseResponseDto> {
-    return this.videosService.browseDirectory(path);
+  async browse(
+    @Query('path') path: string = '',
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '50',
+  ): Promise<BrowseResponseDto> {
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
+    return this.videosService.browseDirectory(path, pageNum, limitNum);
   }
 
   @Get('search')
