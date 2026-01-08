@@ -4,15 +4,15 @@ services:
     container_name: vista-backend
     restart: unless-stopped
     ports:
-      - "8501:3001"
+      - "${BACKEND_PORT:-8501}:3001"
     environment:
       - NODE_ENV=production
       - VIDEOS_ROOT_PATH=/data/videos
-      - VIDEOS_HOST_PATH=/home/petitoff/Videos
-      - CACHE_MAX_SIZE_MB=2048
+      - VIDEOS_HOST_PATH=${VIDEOS_PATH:-/home/petitoff/Videos}
+      - CACHE_MAX_SIZE_MB=${CACHE_MAX_SIZE_MB:-2048}
     volumes:
-      # Mount your video dataset
-      - /home/petitoff/Videos:/data/videos:ro
+      # Mount video dataset from env
+      - ${VIDEOS_PATH:-/home/petitoff/Videos}:/data/videos:ro
       # Persist thumbnail cache
       - vista-cache:/app/.cache
     healthcheck:
@@ -26,7 +26,7 @@ services:
     container_name: vista-frontend
     restart: unless-stopped
     ports:
-      - "8500:80"
+      - "${FRONTEND_PORT:-8500}:80"
     depends_on:
       - backend
 
