@@ -4,7 +4,7 @@ services:
     container_name: vista-backend
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8501:3001"
+      - "8501:3001"
     environment:
       - NODE_ENV=production
       - VIDEOS_ROOT_PATH=/data/videos
@@ -26,7 +26,7 @@ services:
     container_name: vista-frontend
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8500:80"
+      - "8500:80"
     depends_on:
       - backend
 

@@ -1,4 +1,4 @@
-import { Component, For, Show, createEffect, onCleanup } from "solid-js";
+import { Component, For, Show, onMount, onCleanup } from "solid-js";
 import { VideoCard } from "./VideoCard";
 import type { BrowseItem, SearchItem } from "../services/api";
 import { FiFolder, FiFilm, FiInbox, FiLoader } from "solid-icons/fi";
@@ -18,28 +18,34 @@ interface VideoGridProps {
 export const VideoGrid: Component<VideoGridProps> = (props) => {
   let scrollRef: HTMLDivElement | undefined;
 
-  // Infinite scroll
-  createEffect(() => {
+  const handleScroll = () => {
     if (!scrollRef) return;
+    if (
+      props.loading ||
+      props.loadingMore ||
+      !props.hasMore ||
+      props.isSearching
+    )
+      return;
 
-    const handleScroll = () => {
-      if (
-        props.loading ||
-        props.loadingMore ||
-        !props.hasMore ||
-        props.isSearching
-      )
-        return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef;
+    // Load more when 300px from bottom
+    if (scrollHeight - scrollTop - clientHeight < 300) {
+      console.log("Loading more...", { scrollTop, scrollHeight, clientHeight });
+      props.onLoadMore();
+    }
+  };
 
-      const { scrollTop, scrollHeight, clientHeight } = scrollRef!;
-      // Load more when 200px from bottom
-      if (scrollHeight - scrollTop - clientHeight < 200) {
-        props.onLoadMore();
-      }
-    };
+  onMount(() => {
+    if (scrollRef) {
+      scrollRef.addEventListener("scroll", handleScroll);
+    }
+  });
 
-    scrollRef.addEventListener("scroll", handleScroll);
-    onCleanup(() => scrollRef?.removeEventListener("scroll", handleScroll));
+  onCleanup(() => {
+    if (scrollRef) {
+      scrollRef.removeEventListener("scroll", handleScroll);
+    }
   });
 
   return (
@@ -123,10 +129,15 @@ export const VideoGrid: Component<VideoGridProps> = (props) => {
             </div>
           </Show>
 
-          {/* Has More Indicator */}
+          {/* Manual Load More Button as fallback */}
           <Show when={!props.loadingMore && props.hasMore}>
-            <div class="flex items-center justify-center py-4 text-text-muted text-sm">
-              Scroll to load more
+            <div class="flex items-center justify-center py-6">
+              <button
+                onClick={() => props.onLoadMore()}
+                class="px-6 py-2 bg-accent text-white rounded-lg hover:bg-accent/80 transition-colors"
+              >
+                Load More
+              </button>
             </div>
           </Show>
         </Show>
