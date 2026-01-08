@@ -21,25 +21,17 @@ const App: Component = () => {
   // Pagination state
   const [items, setItems] = createSignal<BrowseItem[]>([]);
   const [page, setPage] = createSignal(1);
-  const [hasMore, setHasMore] = createSignal(false);
+  const [totalPages, setTotalPages] = createSignal(1);
+  const [total, setTotal] = createSignal(0);
   const [loading, setLoading] = createSignal(false);
-  const [loadingMore, setLoadingMore] = createSignal(false);
 
   // Search state
   const [searchResults, setSearchResults] = createSignal<SearchItem[]>([]);
   const [searchLoading, setSearchLoading] = createSignal(false);
 
   // Load browse data
-  const loadData = async (
-    path: string,
-    pageNum: number,
-    append: boolean = false
-  ) => {
-    if (pageNum === 1) {
-      setLoading(true);
-    } else {
-      setLoadingMore(true);
-    }
+  const loadData = async (path: string, pageNum: number) => {
+    setLoading(true);
 
     try {
       const data: BrowseResponse = await api.browse(
@@ -47,29 +39,21 @@ const App: Component = () => {
         pageNum,
         ITEMS_PER_PAGE
       );
-
-      if (append) {
-        setItems((prev) => [...prev, ...data.items]);
-      } else {
-        setItems(data.items);
-      }
-
+      setItems(data.items);
       setPage(data.page);
-      setHasMore(data.page < data.totalPages);
+      setTotalPages(data.totalPages);
+      setTotal(data.total);
     } catch (err) {
       console.error("Failed to load:", err);
     } finally {
       setLoading(false);
-      setLoadingMore(false);
     }
   };
 
   // Load on path change
   createEffect(() => {
     const path = currentPath();
-    setPage(1);
-    setItems([]);
-    loadData(path, 1, false);
+    loadData(path, 1);
   });
 
   // Search effect
@@ -88,9 +72,10 @@ const App: Component = () => {
       .finally(() => setSearchLoading(false));
   });
 
-  const handleLoadMore = () => {
-    if (loadingMore() || !hasMore()) return;
-    loadData(currentPath(), page() + 1, true);
+  const handlePageChange = (newPage: number) => {
+    loadData(currentPath(), newPage);
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleItemClick = (item: BrowseItem) => {
@@ -158,11 +143,12 @@ const App: Component = () => {
         searchResults={searchResults()}
         isSearching={isSearching()}
         loading={loading() || (isSearching() && searchLoading())}
-        loadingMore={loadingMore()}
-        hasMore={hasMore()}
+        currentPage={page()}
+        totalPages={totalPages()}
+        total={total()}
+        onPageChange={handlePageChange}
         onItemClick={handleItemClick}
         onSearchResultClick={handleSearchResultClick}
-        onLoadMore={handleLoadMore}
       />
 
       {/* Video Player Modal */}
