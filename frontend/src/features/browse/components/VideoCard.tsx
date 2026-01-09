@@ -6,6 +6,7 @@ import type { BrowseItem } from "@/api/types";
 interface VideoCardProps {
   item: BrowseItem;
   onClick: () => void;
+  subtitle?: string;
 }
 
 const formatSize = (bytes: number): string => {
@@ -54,9 +55,17 @@ export const VideoCard: Component<VideoCardProps> = (props) => {
       </Show>
 
       <div class="p-3">
-        <h3 class="font-medium text-sm truncate mb-2" title={props.item.name}>
+        <h3 class="font-medium text-sm truncate mb-1" title={props.item.name}>
           {props.item.name}
         </h3>
+        <Show when={props.subtitle}>
+          <p
+            class="text-xs text-text-secondary truncate mb-2"
+            title={props.subtitle}
+          >
+            {props.subtitle}
+          </p>
+        </Show>
         <div class="flex items-center gap-2">
           <Show when={isVideo() && props.item.size}>
             <span class="metadata-badge">{formatSize(props.item.size!)}</span>

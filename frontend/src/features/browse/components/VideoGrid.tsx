@@ -2,7 +2,7 @@ import { Component, For, Show } from "solid-js";
 import { VideoCard } from "./VideoCard";
 import { Pagination } from "@/common/components/Pagination";
 import type { BrowseItem, SearchItem } from "@/api/types";
-import { FiFolder, FiFilm, FiInbox } from "solid-icons/fi";
+import { FiFolder, FiInbox } from "solid-icons/fi";
 
 interface VideoGridProps {
   items: BrowseItem[];
@@ -50,21 +50,22 @@ export const VideoGrid: Component<VideoGridProps> = (props) => {
             </div>
           }
         >
-          <div class="space-y-2">
+          <div class="mb-4 text-sm text-text-secondary">
+            Found {props.searchResults!.length} results
+          </div>
+          <div class="thumbnail-grid">
             <For each={props.searchResults}>
               {(item) => (
-                <div
-                  class="folder-item"
+                <VideoCard
+                  item={{
+                    name: item.name,
+                    type: "video",
+                    path: item.path,
+                    hostPath: item.hostPath,
+                  }}
+                  subtitle={item.directory || "Root"}
                   onClick={() => props.onSearchResultClick(item)}
-                >
-                  <FiFilm size={20} class="text-accent flex-shrink-0" />
-                  <div class="flex-1 min-w-0">
-                    <p class="font-medium truncate">{item.name}</p>
-                    <p class="text-sm text-text-secondary truncate">
-                      {item.directory || "Root"}
-                    </p>
-                  </div>
-                </div>
+                />
               )}
             </For>
           </div>
