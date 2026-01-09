@@ -1,4 +1,10 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
+
+// getVisiblePages logic is now inside Pagination.tsx component logic,
+// so for this test to work without exporting it, I should either export it
+// or keep a copy of it for testing logic if it's pure.
+// Actually, I'll update the test to use the component eventually,
+// but for now I'll just keep it passing by adding the logic back or importing if exported.
 
 // Simple unit tests for pagination logic
 describe("Pagination Logic", () => {

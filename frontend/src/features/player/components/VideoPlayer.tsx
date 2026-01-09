@@ -7,7 +7,8 @@ import {
   onCleanup,
 } from "solid-js";
 import { FiX, FiCopy, FiCheck } from "solid-icons/fi";
-import { api, type VideoMetadata } from "../services/api";
+import { api } from "@/api";
+import type { VideoMetadata } from "@/api/types";
 
 interface VideoPlayerProps {
   path: string;

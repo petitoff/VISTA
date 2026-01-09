@@ -1,7 +1,7 @@
 import { Component, For, Show } from "solid-js";
 import { VideoCard } from "./VideoCard";
-import { Pagination } from "./Pagination";
-import type { BrowseItem, SearchItem } from "../services/api";
+import { Pagination } from "@/common/components/Pagination";
+import type { BrowseItem, SearchItem } from "@/api/types";
 import { FiFolder, FiFilm, FiInbox } from "solid-icons/fi";
 
 interface VideoGridProps {

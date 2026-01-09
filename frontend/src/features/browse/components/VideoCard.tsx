@@ -1,6 +1,7 @@
 import { Component, createSignal, Show } from "solid-js";
 import { FiFolder, FiFilm, FiClock } from "solid-icons/fi";
-import { api, type BrowseItem } from "../services/api";
+import { api } from "@/api";
+import type { BrowseItem } from "@/api/types";
 
 interface VideoCardProps {
   item: BrowseItem;
