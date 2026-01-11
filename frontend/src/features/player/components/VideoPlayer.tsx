@@ -6,7 +6,15 @@ import {
   onMount,
   onCleanup,
 } from "solid-js";
-import { FiX, FiCopy, FiCheck } from "solid-icons/fi";
+import {
+  FiX,
+  FiCopy,
+  FiCheck,
+  FiSkipForward,
+  FiSkipBack,
+  FiPlay,
+  FiPause,
+} from "solid-icons/fi";
 import { api } from "@/api";
 import type { VideoMetadata } from "@/api/types";
 
@@ -36,9 +44,28 @@ const formatSize = (bytes: number): string => {
 export const VideoPlayer: Component<VideoPlayerProps> = (props) => {
   const [metadata] = createResource(() => props.path, api.getMetadata);
   const [copied, setCopied] = createSignal(false);
+  const [streamStartTime, setStreamStartTime] = createSignal(0);
+  const [currentTime, setCurrentTime] = createSignal(0);
+  const [isLoading, setIsLoading] = createSignal(true);
+  const [isPlaying, setIsPlaying] = createSignal(true);
+
+  let videoRef: HTMLVideoElement | undefined;
 
   // Use hostPath from metadata if available, fallback to props.path
   const displayPath = () => metadata()?.hostPath || props.path;
+
+  // Total duration from metadata
+  const totalDuration = () => metadata()?.duration || 0;
+
+  // Actual current time in the original video
+  const actualTime = () => streamStartTime() + currentTime();
+
+  // Progress percentage
+  const progress = () =>
+    totalDuration() > 0 ? (actualTime() / totalDuration()) * 100 : 0;
+
+  // Generate stream URL with current start time
+  const streamUrl = () => api.getStreamUrl(props.path, streamStartTime());
 
   const handleCopyPath = async () => {
     try {
@@ -50,6 +77,55 @@ export const VideoPlayer: Component<VideoPlayerProps> = (props) => {
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Escape") props.onClose();
+    if (e.key === " ") {
+      e.preventDefault();
+      togglePlayPause();
+    }
+  };
+
+  // Play/Pause toggle
+  const togglePlayPause = () => {
+    if (!videoRef) return;
+    if (videoRef.paused) {
+      videoRef.play();
+      setIsPlaying(true);
+    } else {
+      videoRef.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  // Seek to specific time by reloading the stream
+  const seekTo = (targetTime: number) => {
+    const clampedTime = Math.max(0, Math.min(targetTime, totalDuration()));
+    console.log(`Seeking to ${clampedTime}s`);
+    setIsLoading(true);
+    setStreamStartTime(clampedTime);
+    setCurrentTime(0);
+  };
+
+  // Handle click on custom progress bar
+  const handleProgressBarClick = (e: MouseEvent) => {
+    const bar = e.currentTarget as HTMLElement;
+    const rect = bar.getBoundingClientRect();
+    const clickPosition = (e.clientX - rect.left) / rect.width;
+    const targetTime = clickPosition * totalDuration();
+    seekTo(targetTime);
+  };
+
+  // Skip forward/backward buttons
+  const skipForward = () => seekTo(actualTime() + 10);
+  const skipBackward = () => seekTo(actualTime() - 10);
+
+  // Track current playback time
+  const handleTimeUpdate = () => {
+    if (videoRef) {
+      setCurrentTime(videoRef.currentTime);
+    }
+  };
+
+  const handleCanPlay = () => {
+    setIsLoading(false);
   };
 
   onMount(() => document.addEventListener("keydown", handleKeyDown));
@@ -78,50 +154,103 @@ export const VideoPlayer: Component<VideoPlayerProps> = (props) => {
               </button>
             </div>
           </div>
-          <button
-            onClick={props.onClose}
-            class="p-2 hover:bg-bg-hover rounded-lg"
-          >
+          <button onClick={props.onClose} class="p-2 hover:bg-bg-hover">
             <FiX size={24} />
           </button>
         </div>
 
         {/* Video */}
         <div class="bg-black relative">
+          {/* Loading overlay */}
+          <Show when={isLoading()}>
+            <div class="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
+              <div class="text-accent text-lg">Loading...</div>
+            </div>
+          </Show>
+
           <video
-            src={api.getStreamUrl(props.path)}
-            controls
+            ref={videoRef}
+            src={streamUrl()}
             autoplay
             preload="metadata"
             class="w-full max-h-[60vh]"
+            onTimeUpdate={handleTimeUpdate}
+            onCanPlay={handleCanPlay}
+            onLoadStart={() => setIsLoading(true)}
             onError={(e) => {
               const video = e.target as HTMLVideoElement;
               const error = video.error;
               console.error("Video error:", {
                 code: error?.code,
                 message: error?.message,
-                MEDIA_ERR_ABORTED: error?.code === 1,
-                MEDIA_ERR_NETWORK: error?.code === 2,
-                MEDIA_ERR_DECODE: error?.code === 3,
-                MEDIA_ERR_SRC_NOT_SUPPORTED: error?.code === 4,
               });
+              setIsLoading(false);
             }}
-            onLoadStart={() => console.log("Video: loading started")}
-            onCanPlay={() => console.log("Video: can play")}
-            onWaiting={() => console.log("Video: waiting for data")}
           />
+        </div>
+
+        {/* Custom Seek Controls */}
+        <div class="px-4 py-3 bg-bg-secondary border-t border-border">
+          {/* Progress bar */}
+          <div
+            class="h-2 bg-bg-tertiary cursor-pointer mb-3 relative group"
+            onClick={handleProgressBarClick}
+          >
+            <div
+              class="h-full bg-accent transition-all"
+              style={{ width: `${progress()}%` }}
+            />
+            <div
+              class="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{
+                left: `${progress()}%`,
+                transform: "translate(-50%, -50%)",
+              }}
+            />
+          </div>
+
+          {/* Time display and skip buttons */}
+          <div class="flex items-center justify-between text-sm">
+            <div class="flex items-center gap-2">
+              <button
+                onClick={skipBackward}
+                class="p-1 hover:text-accent transition-colors"
+                title="Skip back 10s"
+              >
+                <FiSkipBack size={18} />
+              </button>
+              <button
+                onClick={togglePlayPause}
+                class="p-2 hover:text-accent transition-colors bg-bg-tertiary"
+                title={isPlaying() ? "Pause" : "Play"}
+              >
+                {isPlaying() ? <FiPause size={20} /> : <FiPlay size={20} />}
+              </button>
+              <button
+                onClick={skipForward}
+                class="p-1 hover:text-accent transition-colors"
+                title="Skip forward 10s"
+              >
+                <FiSkipForward size={18} />
+              </button>
+              <span class="text-text-secondary min-w-[100px] ml-2">
+                {formatDuration(actualTime())} /{" "}
+                {formatDuration(totalDuration())}
+              </span>
+            </div>
+            <span class="text-text-muted text-xs">
+              Click progress bar to seek
+            </span>
+          </div>
         </div>
 
         {/* Metadata */}
         <Show when={metadata()}>
-          <div class="p-4 flex flex-wrap gap-3">
+          <div class="p-4 flex flex-wrap gap-3 border-t border-border">
             <span class="metadata-badge">
               {metadata()!.width} × {metadata()!.height}
             </span>
             <span class="metadata-badge">{metadata()!.fps} FPS</span>
-            <span class="metadata-badge">
-              {formatDuration(metadata()!.duration)}
-            </span>
             <span class="metadata-badge">{formatSize(metadata()!.size)}</span>
             <span class="metadata-badge">
               {metadata()!.codec.toUpperCase()}

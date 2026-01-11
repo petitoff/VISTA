@@ -50,7 +50,7 @@ export const Pagination: Component<PaginationProps> = (props) => {
         <button
           onClick={() => props.onPageChange(props.currentPage - 1)}
           disabled={props.currentPage <= 1}
-          class="p-2 rounded-lg hover:bg-bg-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          class="p-2 hover:bg-bg-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <FiChevronLeft size={20} />
         </button>
@@ -64,7 +64,7 @@ export const Pagination: Component<PaginationProps> = (props) => {
             >
               <button
                 onClick={() => props.onPageChange(page as number)}
-                class="min-w-[40px] h-10 rounded-lg font-medium transition-colors"
+                class="min-w-[40px] h-10 font-medium transition-colors"
                 classList={{
                   "bg-accent text-white": props.currentPage === page,
                   "hover:bg-bg-hover": props.currentPage !== page,
@@ -80,7 +80,7 @@ export const Pagination: Component<PaginationProps> = (props) => {
         <button
           onClick={() => props.onPageChange(props.currentPage + 1)}
           disabled={props.currentPage >= props.totalPages}
-          class="p-2 rounded-lg hover:bg-bg-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          class="p-2 hover:bg-bg-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <FiChevronRight size={20} />
         </button>

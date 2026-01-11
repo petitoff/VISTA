@@ -40,7 +40,10 @@ export const api = {
     return `${API_BASE}/thumbnails/${encodeURIComponent(path)}`;
   },
 
-  getStreamUrl(path: string): string {
-    return `${API_BASE}/stream/${encodeURIComponent(path)}`;
+  getStreamUrl(path: string, startTime?: number): string {
+    // Use transcoding stream for codec compatibility
+    // Add ?start= parameter for seeking support
+    const url = `${API_BASE}/stream/${encodeURIComponent(path)}`;
+    return startTime && startTime > 0 ? `${url}?start=${startTime}` : url;
   },
 };
