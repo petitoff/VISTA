@@ -56,6 +56,9 @@ const App: Component = () => {
         totalPages={browse.totalPages()}
         total={browse.total()}
         onPageChange={browse.changePage}
+        sortBy={browse.sortBy()}
+        sortOrder={browse.sortOrder()}
+        onSortChange={browse.changeSorting}
         onItemClick={handleItemClick}
         onSearchResultClick={(item) => player.openVideo(item.path)}
       />

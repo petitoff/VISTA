@@ -1,7 +1,8 @@
 import { Component, For, Show } from "solid-js";
 import { VideoCard } from "./VideoCard";
+import { SortControls } from "./SortControls";
 import { Pagination } from "@/common/components/Pagination";
-import type { BrowseItem, SearchItem } from "@/api/types";
+import type { BrowseItem, SearchItem, SortBy, SortOrder } from "@/api/types";
 import { FiFolder, FiInbox } from "solid-icons/fi";
 
 interface VideoGridProps {
@@ -14,6 +15,10 @@ interface VideoGridProps {
   totalPages: number;
   total: number;
   onPageChange: (page: number) => void;
+  // Sorting
+  sortBy: SortBy;
+  sortOrder: SortOrder;
+  onSortChange: (sortBy: SortBy, sortOrder: SortOrder) => void;
   // Handlers
   onItemClick: (item: BrowseItem) => void;
   onSearchResultClick: (item: SearchItem) => void;
@@ -83,11 +88,18 @@ export const VideoGrid: Component<VideoGridProps> = (props) => {
             </div>
           }
         >
-          {/* Item count info */}
-          <div class="mb-4 text-sm text-text-secondary">
-            Showing {(props.currentPage - 1) * 50 + 1} -{" "}
-            {Math.min(props.currentPage * 50, props.total)} of {props.total}{" "}
-            items
+          {/* Header with sort controls and item count */}
+          <div class="flex items-center justify-between mb-4">
+            <SortControls
+              sortBy={props.sortBy}
+              sortOrder={props.sortOrder}
+              onSortChange={props.onSortChange}
+            />
+            <div class="text-sm text-text-secondary">
+              Showing {(props.currentPage - 1) * 50 + 1} -{" "}
+              {Math.min(props.currentPage * 50, props.total)} of {props.total}{" "}
+              items
+            </div>
           </div>
 
           {/* Grid */}

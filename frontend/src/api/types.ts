@@ -1,9 +1,20 @@
+export type SortBy = "name" | "date";
+export type SortOrder = "asc" | "desc";
+
 export interface BrowseItem {
   name: string;
   type: "directory" | "video";
   path: string;
   hostPath: string;
   size?: number;
+  modifiedAt?: number;
+  cvat?: {
+    exists: boolean;
+    taskId?: number;
+    taskUrl?: string;
+    projectName?: string;
+    stage?: string;
+  };
 }
 
 export interface BrowseResponse {

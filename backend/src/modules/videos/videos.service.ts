@@ -10,6 +10,7 @@ import {
   SearchResultDto,
   SearchItemDto,
 } from './dto';
+import { CvatService } from '../cvat/cvat.service';
 
 @Injectable()
 export class VideosService {
@@ -18,7 +19,10 @@ export class VideosService {
   private readonly allowedExtensions: string[];
   private readonly maxSearchResults: number;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private cvatService: CvatService,
+  ) {
     this.rootPath = this.configService.get<string>('videos.rootPath')!;
     this.hostPath = this.configService.get<string>('videos.hostPath')!;
     this.allowedExtensions = this.configService.get<string[]>(
@@ -47,6 +51,8 @@ export class VideosService {
     relativePath: string = '',
     page: number = 1,
     limit: number = 50,
+    sortBy: 'name' | 'date' = 'name',
+    sortOrder: 'asc' | 'desc' = 'asc',
   ): Promise<BrowseResponseDto> {
     const absolutePath = this.resolvePath(relativePath);
 
@@ -63,6 +69,7 @@ export class VideosService {
       if (entry.name.startsWith('.')) continue;
 
       const itemPath = join(relativePath, entry.name);
+      const stats = await fs.stat(join(absolutePath, entry.name));
 
       if (entry.isDirectory()) {
         allItems.push({
@@ -70,25 +77,35 @@ export class VideosService {
           type: 'directory',
           path: itemPath,
           hostPath: this.toHostPath(itemPath),
+          modifiedAt: stats.mtimeMs,
         });
       } else if (this.isVideoFile(entry.name)) {
-        const stats = await fs.stat(join(absolutePath, entry.name));
         allItems.push({
           name: entry.name,
           type: 'video',
           path: itemPath,
           hostPath: this.toHostPath(itemPath),
           size: stats.size,
+          modifiedAt: stats.mtimeMs,
         });
       }
     }
 
-    // Sort: directories first, then by name
+    // Sort: directories first, then by selected criteria
     allItems.sort((a, b) => {
+      // Directories always come first
       if (a.type !== b.type) {
         return a.type === 'directory' ? -1 : 1;
       }
-      return a.name.localeCompare(b.name);
+
+      let comparison: number;
+      if (sortBy === 'date') {
+        comparison = (a.modifiedAt || 0) - (b.modifiedAt || 0);
+      } else {
+        comparison = a.name.localeCompare(b.name);
+      }
+
+      return sortOrder === 'desc' ? -comparison : comparison;
     });
 
     // Paginate
@@ -96,6 +113,22 @@ export class VideosService {
     const totalPages = Math.ceil(total / limit);
     const startIdx = (page - 1) * limit;
     const items = allItems.slice(startIdx, startIdx + limit);
+
+    // Enrich video items with CVAT status (only if CVAT is configured)
+    if (this.cvatService.isConfigured()) {
+      const videoItems = items.filter((item) => item.type === 'video');
+      if (videoItems.length > 0) {
+        const filenames = videoItems.map((item) => item.name);
+        const cvatStatuses = await this.cvatService.checkVideosStatus(filenames);
+
+        for (const item of videoItems) {
+          const cvatStatus = cvatStatuses.get(item.name);
+          if (cvatStatus) {
+            item.cvat = cvatStatus;
+          }
+        }
+      }
+    }
 
     return {
       path: relativePath,

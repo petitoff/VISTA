@@ -10,6 +10,11 @@ services:
       - VIDEOS_ROOT_PATH=/data/videos
       - VIDEOS_HOST_PATH=${VIDEOS_PATH:-/home/petitoff/Videos}
       - CACHE_MAX_SIZE_MB=${CACHE_MAX_SIZE_MB:-2048}
+      # CVAT Integration
+      - CVAT_URL=${CVAT_URL:-}
+      - CVAT_USERNAME=${CVAT_USERNAME:-}
+      - CVAT_PASSWORD=${CVAT_PASSWORD:-}
+      - CVAT_CACHE_TIMEOUT_MS=${CVAT_CACHE_TIMEOUT_MS:-5000}
     volumes:
       # Mount video dataset from env
       - ${VIDEOS_PATH:-/home/petitoff/Videos}:/data/videos:ro

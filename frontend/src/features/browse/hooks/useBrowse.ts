@@ -1,7 +1,7 @@
 import { createSignal, createEffect, createMemo } from "solid-js";
 import { useSearchParams } from "@solidjs/router";
 import { api } from "@/api";
-import type { BrowseItem, BrowseResponse } from "@/api/types";
+import type { BrowseItem, BrowseResponse, SortBy, SortOrder } from "@/api/types";
 
 export const useBrowse = (itemsPerPage: number) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -23,13 +23,32 @@ export const useBrowse = (itemsPerPage: number) => {
     return isNaN(p) || p < 1 ? 1 : p;
   });
 
-  const loadData = async (path: string, pageNum: number) => {
+  // Sort settings from URL
+  const sortBy = createMemo((): SortBy => {
+    const param = searchParams.sortBy;
+    const value = Array.isArray(param) ? param[0] : param;
+    return value === "date" ? "date" : "name";
+  });
+  const sortOrder = createMemo((): SortOrder => {
+    const param = searchParams.sortOrder;
+    const value = Array.isArray(param) ? param[0] : param;
+    return value === "desc" ? "desc" : "asc";
+  });
+
+  const loadData = async (
+    path: string,
+    pageNum: number,
+    sort: SortBy,
+    order: SortOrder
+  ) => {
     setLoading(true);
     try {
       const data: BrowseResponse = await api.browse(
         path,
         pageNum,
-        itemsPerPage
+        itemsPerPage,
+        sort,
+        order
       );
       setItems(data.items);
       setTotalPages(data.totalPages);
@@ -43,7 +62,7 @@ export const useBrowse = (itemsPerPage: number) => {
 
   // React to URL param changes
   createEffect(() => {
-    loadData(currentPath(), page());
+    loadData(currentPath(), page(), sortBy(), sortOrder());
   });
 
   const changePath = (path: string) => {
@@ -55,6 +74,14 @@ export const useBrowse = (itemsPerPage: number) => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const changeSorting = (newSortBy: SortBy, newSortOrder: SortOrder) => {
+    setSearchParams({
+      sortBy: newSortBy,
+      sortOrder: newSortOrder,
+      page: "1", // Reset to first page when sorting changes
+    });
+  };
+
   return {
     currentPath,
     items,
@@ -62,7 +89,10 @@ export const useBrowse = (itemsPerPage: number) => {
     totalPages,
     total,
     loading,
+    sortBy,
+    sortOrder,
     changePath,
     changePage,
+    changeSorting,
   };
 };

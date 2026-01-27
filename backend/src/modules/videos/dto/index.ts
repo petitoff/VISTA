@@ -15,6 +15,14 @@ export class BrowseItemDto {
   path: string;
   hostPath: string; // Real path on host for display
   size?: number;
+  modifiedAt?: number; // Unix timestamp for sorting by date
+  cvat?: {
+    exists: boolean;
+    taskId?: number;
+    taskUrl?: string;
+    projectName?: string;
+    stage?: string;
+  };
 }
 
 export class VideoMetadataDto {

@@ -1,4 +1,4 @@
-import type { BrowseResponse, SearchResult, VideoMetadata } from "./types";
+import type { BrowseResponse, SearchResult, VideoMetadata, SortBy, SortOrder } from "./types";
 
 // In Docker: nginx proxies /api/* to backend
 // In dev: direct connection to localhost:3001
@@ -8,12 +8,16 @@ export const api = {
   async browse(
     path: string = "",
     page: number = 1,
-    limit: number = 50
+    limit: number = 50,
+    sortBy: SortBy = "name",
+    sortOrder: SortOrder = "asc"
   ): Promise<BrowseResponse> {
     const params = new URLSearchParams({
       path,
       page: String(page),
       limit: String(limit),
+      sortBy,
+      sortOrder,
     });
     const res = await fetch(`${API_BASE}/videos/browse?${params}`);
     if (!res.ok) throw new Error("Failed to browse");

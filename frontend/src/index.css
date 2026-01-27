@@ -116,6 +116,44 @@ body {
   border: 1px solid var(--color-border);
 }
 
+.metadata-badge--cvat {
+  background: rgba(118, 185, 0, 0.15);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* CVAT Status badges */
+.cvat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  border-radius: 0;
+  transition: all 0.15s ease;
+}
+
+.cvat-badge--exists {
+  background: var(--color-accent);
+  color: #000000;
+  border: none;
+  cursor: pointer;
+}
+
+.cvat-badge--exists:hover {
+  background: var(--color-accent-hover);
+  transform: scale(1.05);
+}
+
+.cvat-badge--missing {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
 /* NVIDIA-style modal */
 .modal-overlay {
   position: fixed;

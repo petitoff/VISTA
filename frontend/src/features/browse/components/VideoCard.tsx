@@ -1,5 +1,5 @@
 import { Component, createSignal, Show } from "solid-js";
-import { FiFolder, FiFilm, FiClock } from "solid-icons/fi";
+import { FiFolder, FiFilm, FiExternalLink } from "solid-icons/fi";
 import { api } from "@/api";
 import type { BrowseItem } from "@/api/types";
 
@@ -22,6 +22,14 @@ export const VideoCard: Component<VideoCardProps> = (props) => {
   const [imageError, setImageError] = createSignal(false);
 
   const isVideo = () => props.item.type === "video";
+  const hasCvat = () => props.item.cvat?.exists;
+
+  const handleCvatClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    if (props.item.cvat?.taskUrl) {
+      window.open(props.item.cvat.taskUrl, "_blank");
+    }
+  };
 
   return (
     <div class="video-card" onClick={props.onClick}>
@@ -45,6 +53,24 @@ export const VideoCard: Component<VideoCardProps> = (props) => {
               <FiFilm size={48} class="text-text-muted" />
             </div>
           </Show>
+          {/* CVAT Status Badge */}
+          <Show when={isVideo() && props.item.cvat}>
+            <div class="absolute top-2 right-2">
+              <Show when={hasCvat()}>
+                <button
+                  class="cvat-badge cvat-badge--exists"
+                  onClick={handleCvatClick}
+                  title={`Open in CVAT: ${props.item.cvat?.projectName || "Task"}`}
+                >
+                  <span>CVAT</span>
+                  <FiExternalLink size={12} />
+                </button>
+              </Show>
+              <Show when={!hasCvat()}>
+                <span class="cvat-badge cvat-badge--missing">Not in CVAT</span>
+              </Show>
+            </div>
+          </Show>
         </div>
       </Show>
 
@@ -66,11 +92,20 @@ export const VideoCard: Component<VideoCardProps> = (props) => {
             {props.subtitle}
           </p>
         </Show>
+        {/* CVAT Project Info */}
+        <Show when={hasCvat() && props.item.cvat?.projectName}>
+          <p class="text-xs text-accent truncate mb-2" title={props.item.cvat?.projectName}>
+            📁 {props.item.cvat?.projectName}
+          </p>
+        </Show>
         <div class="flex items-center gap-2">
           <Show when={isVideo() && props.item.size}>
             <span class="metadata-badge">{formatSize(props.item.size!)}</span>
           </Show>
           <span class="metadata-badge">{isVideo() ? "MP4" : "Folder"}</span>
+          <Show when={hasCvat() && props.item.cvat?.stage}>
+            <span class="metadata-badge metadata-badge--cvat">{props.item.cvat?.stage}</span>
+          </Show>
         </div>
       </div>
     </div>
