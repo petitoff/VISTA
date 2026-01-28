@@ -25,7 +25,11 @@ export class ProcessingService {
         jobName: string,
         method: string,
         queueUrl?: string,
+        buildUrl?: string,
     ): Promise<void> {
+        // If we have buildUrl, we're already building; otherwise we're queued
+        const status = buildUrl ? 'building' : 'queued';
+
         await this.prisma.videoProcessing.upsert({
             where: { videoPath },
             create: {
@@ -33,18 +37,19 @@ export class ProcessingService {
                 jobName,
                 method,
                 queueUrl,
-                status: 'queued',
+                buildUrl,
+                status,
             },
             update: {
                 jobName,
                 method,
                 queueUrl,
-                status: 'queued',
+                buildUrl,
+                status,
                 startedAt: new Date(),
-                buildUrl: null,
             },
         });
-        this.logger.log(`Started tracking processing for ${videoPath}`);
+        this.logger.log(`Started tracking processing for ${videoPath} (status: ${status})`);
     }
 
     /**
@@ -108,6 +113,7 @@ export class ProcessingService {
     private async refreshRecordStatus(record: {
         id: string;
         videoPath: string;
+        jobName: string;
         queueUrl: string | null;
         buildUrl: string | null;
         status: string;
@@ -125,17 +131,25 @@ export class ProcessingService {
                 return;
             }
 
-            if (queueInfo.buildUrl) {
+            let buildUrl = queueInfo.buildUrl;
+
+            // If queue item is gone (404) but we don't have buildUrl, try to get it from lastBuild
+            if (!queueInfo.waiting && !buildUrl) {
+                this.logger.log(`Queue item disappeared for ${record.videoPath}, trying to get lastBuild URL`);
+                buildUrl = await this.jenkinsService.getLastBuildUrl(record.jobName);
+            }
+
+            if (buildUrl) {
                 // Job left the queue, now building
                 await this.prisma.videoProcessing.update({
                     where: { id: record.id },
                     data: {
                         status: 'building',
-                        buildUrl: queueInfo.buildUrl,
+                        buildUrl,
                     },
                 });
                 record.status = 'building';
-                record.buildUrl = queueInfo.buildUrl;
+                record.buildUrl = buildUrl;
                 this.logger.log(`Job started building for ${record.videoPath}`);
             }
         }

@@ -5,6 +5,7 @@ import type { JenkinsConfig } from '../settings/dto';
 export interface TriggerBuildResult {
     success: boolean;
     queueUrl?: string;
+    buildUrl?: string;
     error?: string;
 }
 
@@ -111,9 +112,22 @@ export class JenkinsService {
                 // Build queued successfully
                 const queueUrl = response.headers.get('Location');
                 this.logger.log(`Build queued: ${queueUrl}`);
+
+                // Wait for build to start and get buildUrl
+                let buildUrl: string | undefined;
+                if (queueUrl) {
+                    buildUrl = await this.waitForBuildUrl(queueUrl, config);
+                    if (buildUrl) {
+                        this.logger.log(`Build started: ${buildUrl}`);
+                    } else {
+                        this.logger.warn(`Could not get buildUrl in time, will track via queue`);
+                    }
+                }
+
                 return {
                     success: true,
                     queueUrl: queueUrl || undefined,
+                    buildUrl,
                 };
             } else {
                 const errorText = await response.text();
@@ -130,6 +144,51 @@ export class JenkinsService {
                 error: error.message,
             };
         }
+    }
+
+    /**
+     * Poll queue until build starts and return buildUrl.
+     * Returns undefined if timeout (15 seconds) is reached.
+     */
+    private async waitForBuildUrl(queueUrl: string, config: JenkinsConfig): Promise<string | undefined> {
+        const maxWaitMs = 15000;
+        const pollIntervalMs = 1000;
+        const startTime = Date.now();
+
+        while (Date.now() - startTime < maxWaitMs) {
+            try {
+                const response = await fetch(`${queueUrl}api/json`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': this.getAuthHeader(config),
+                    },
+                });
+
+                if (!response.ok) {
+                    // Queue item might have been removed - build may have started
+                    // We won't get buildUrl this way, return undefined
+                    return undefined;
+                }
+
+                const data = await response.json();
+
+                if (data.cancelled) {
+                    return undefined;
+                }
+
+                if (data.executable?.url) {
+                    return data.executable.url;
+                }
+
+                // Not ready yet, wait and try again
+                await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+            } catch (error) {
+                this.logger.warn(`Error polling queue: ${error.message}`);
+                return undefined;
+            }
+        }
+
+        return undefined;
     }
 
     /**
@@ -214,6 +273,41 @@ export class JenkinsService {
         } catch (error) {
             this.logger.warn(`Failed to get build status: ${error.message}`);
             return { building: false, finished: false };
+        }
+    }
+
+    /**
+     * Get the last build URL for a given job name.
+     * Useful when queue item disappears before we can extract buildUrl.
+     */
+    async getLastBuildUrl(jobName: string): Promise<string | undefined> {
+        const config = await this.getConfig();
+        if (!config) {
+            return undefined;
+        }
+
+        try {
+            // Encode job name for URL (handle folders like "folder/job")
+            const encodedJobName = jobName.split('/').map(encodeURIComponent).join('/job/');
+            const url = `${config.url}/job/${encodedJobName}/lastBuild/api/json`;
+
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Authorization': this.getAuthHeader(config),
+                },
+            });
+
+            if (!response.ok) {
+                this.logger.warn(`Failed to get last build for ${jobName}: ${response.status}`);
+                return undefined;
+            }
+
+            const data = await response.json();
+            return data.url || undefined;
+        } catch (error) {
+            this.logger.warn(`Error getting last build for ${jobName}: ${error.message}`);
+            return undefined;
         }
     }
 }

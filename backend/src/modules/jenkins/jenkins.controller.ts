@@ -80,6 +80,7 @@ export class JenkinsController {
                 jobName,
                 dto.method,
                 result.queueUrl,
+                result.buildUrl,
             );
         }
 
