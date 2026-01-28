@@ -1,5 +1,6 @@
-import { Controller, Post, Body, Get, Logger } from '@nestjs/common';
+import { Controller, Post, Body, Get, Logger, Inject, forwardRef } from '@nestjs/common';
 import { JenkinsService } from './jenkins.service';
+import { ProcessingService } from '../processing/processing.service';
 import type { SendToCvatDto, TriggerResponseDto } from './dto';
 
 @Controller('jenkins')
@@ -10,7 +11,11 @@ export class JenkinsController {
     private readonly ROI_EXTRACTION_JOB = 'pt-models/yolo_roi_extractor';
     private readonly DIRECT_UPLOAD_JOB = 'pt-models/cvat-video-uploader';
 
-    constructor(private readonly jenkinsService: JenkinsService) { }
+    constructor(
+        private readonly jenkinsService: JenkinsService,
+        @Inject(forwardRef(() => ProcessingService))
+        private readonly processingService: ProcessingService,
+    ) { }
 
     @Get('status')
     async getStatus(): Promise<{ configured: boolean }> {
@@ -67,6 +72,16 @@ export class JenkinsController {
         }
 
         const result = await this.jenkinsService.triggerBuild(jobName, parameters);
+
+        // Track processing if successful
+        if (result.success) {
+            await this.processingService.startProcessing(
+                dto.videoPath,
+                jobName,
+                dto.method,
+                result.queueUrl,
+            );
+        }
 
         return {
             ...result,

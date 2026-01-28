@@ -45,7 +45,7 @@ export const SendToCvatModal: Component<SendToCvatModalProps> = (props) => {
                 message: `✓ Build queued: ${response.jobName}`,
             });
             // Auto-close after success
-            setTimeout(() => props.onClose(), 2000);
+            setTimeout(() => props.onClose(), 1000);
         } else {
             setResult({
                 success: false,

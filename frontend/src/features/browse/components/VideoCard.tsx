@@ -1,5 +1,5 @@
 import { Component, createSignal, For, Show } from "solid-js";
-import { FiFolder, FiFilm, FiExternalLink, FiUpload, FiAlertTriangle } from "solid-icons/fi";
+import { FiFolder, FiFilm, FiExternalLink, FiUpload, FiAlertTriangle, FiLoader } from "solid-icons/fi";
 import { api } from "@/api";
 import type { BrowseItem } from "@/api/types";
 import { SendToCvatModal } from "./SendToCvatModal";
@@ -27,6 +27,7 @@ export const VideoCard: Component<VideoCardProps> = (props) => {
   const hasCvat = () => props.item.cvat?.exists;
   const hasDuplicate = () => props.item.cvat?.hasDuplicateInSameProject;
   const occurrences = () => props.item.cvat?.occurrences || [];
+  const isProcessing = () => !!props.item.processing;
 
   // Get unique project names
   const uniqueProjects = () => {
@@ -96,7 +97,18 @@ export const VideoCard: Component<VideoCardProps> = (props) => {
                     <FiExternalLink size={12} />
                   </button>
                 </Show>
-                <Show when={!hasCvat()}>
+                {/* Processing badge */}
+                <Show when={isProcessing()}>
+                  <div
+                    class="cvat-badge cvat-badge--processing"
+                    title={`Processing: ${props.item.processing?.jobName}`}
+                  >
+                    <FiLoader size={12} class="animate-spin" />
+                    <span>Processing</span>
+                  </div>
+                </Show>
+                {/* Send to CVAT button - only show when not in CVAT and not processing */}
+                <Show when={!hasCvat() && !isProcessing()}>
                   <button
                     class="cvat-badge cvat-badge--send"
                     onClick={handleSendClick}

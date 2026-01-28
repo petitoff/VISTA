@@ -26,3 +26,15 @@ model Settings {
   
   updatedAt DateTime @updatedAt
 }
+
+/// Tracks videos currently being processed by Jenkins jobs
+model VideoProcessing {
+  id          String   @id @default(uuid())
+  videoPath   String   @unique  // hostPath of the video
+  jobName     String              // Jenkins job name
+  method      String              // "roi" | "direct"
+  queueUrl    String?             // Jenkins queue URL
+  buildUrl    String?             // Jenkins build URL (after leaving queue)
+  status      String   @default("queued") // queued | building | success | failed
+  startedAt   DateTime @default(now())
+}

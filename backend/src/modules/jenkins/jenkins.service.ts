@@ -131,4 +131,89 @@ export class JenkinsService {
             };
         }
     }
+
+    /**
+     * Get queue item info to check if build has started
+     */
+    async getQueueItem(queueUrl: string): Promise<{
+        waiting: boolean;
+        buildUrl?: string;
+        cancelled: boolean;
+    }> {
+        const config = await this.getConfig();
+        if (!config) {
+            return { waiting: false, cancelled: true };
+        }
+
+        try {
+            const response = await fetch(`${queueUrl}api/json`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': this.getAuthHeader(config),
+                },
+            });
+
+            if (!response.ok) {
+                // Queue item might have been removed (build started or cancelled)
+                return { waiting: false, cancelled: false };
+            }
+
+            const data = await response.json();
+
+            if (data.cancelled) {
+                return { waiting: false, cancelled: true };
+            }
+
+            if (data.executable?.url) {
+                return {
+                    waiting: false,
+                    buildUrl: data.executable.url,
+                    cancelled: false,
+                };
+            }
+
+            return { waiting: true, cancelled: false };
+        } catch (error) {
+            this.logger.warn(`Failed to get queue item: ${error.message}`);
+            return { waiting: false, cancelled: false };
+        }
+    }
+
+    /**
+     * Get build status to check if build has finished
+     */
+    async getBuildStatus(buildUrl: string): Promise<{
+        building: boolean;
+        finished: boolean;
+        result?: string; // SUCCESS, FAILURE, ABORTED, etc.
+    }> {
+        const config = await this.getConfig();
+        if (!config) {
+            return { building: false, finished: true, result: 'UNKNOWN' };
+        }
+
+        try {
+            const response = await fetch(`${buildUrl}api/json`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': this.getAuthHeader(config),
+                },
+            });
+
+            if (!response.ok) {
+                return { building: false, finished: true, result: 'UNKNOWN' };
+            }
+
+            const data = await response.json();
+
+            return {
+                building: data.building === true,
+                finished: data.building === false && data.result !== null,
+                result: data.result || undefined,
+            };
+        } catch (error) {
+            this.logger.warn(`Failed to get build status: ${error.message}`);
+            return { building: false, finished: false };
+        }
+    }
 }

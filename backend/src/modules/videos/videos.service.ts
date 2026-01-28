@@ -11,6 +11,7 @@ import {
   SearchItemDto,
 } from './dto';
 import { CvatService } from '../cvat/cvat.service';
+import { ProcessingService } from '../processing/processing.service';
 
 @Injectable()
 export class VideosService {
@@ -22,6 +23,7 @@ export class VideosService {
   constructor(
     private configService: ConfigService,
     private cvatService: CvatService,
+    private processingService: ProcessingService,
   ) {
     this.rootPath = this.configService.get<string>('videos.rootPath')!;
     this.hostPath = this.configService.get<string>('videos.hostPath')!;
@@ -127,6 +129,24 @@ export class VideosService {
           if (cvatStatus) {
             item.cvat = cvatStatus;
           }
+        }
+      }
+    }
+
+    // Enrich video items with processing status
+    const videoItems = items.filter((item) => item.type === 'video');
+    if (videoItems.length > 0) {
+      const hostPaths = videoItems.map((item) => item.hostPath);
+      const processingStatuses = await this.processingService.getForVideosAndRefresh(hostPaths);
+
+      for (const item of videoItems) {
+        const processingInfo = processingStatuses.get(item.hostPath);
+        if (processingInfo) {
+          item.processing = {
+            jobName: processingInfo.jobName,
+            status: processingInfo.status,
+            startedAt: processingInfo.startedAt.getTime(),
+          };
         }
       }
     }

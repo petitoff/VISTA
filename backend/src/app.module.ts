@@ -11,6 +11,7 @@ import { StreamModule } from './modules/stream/stream.module';
 import { CvatModule } from './modules/cvat/cvat.module';
 import { JenkinsModule } from './modules/jenkins/jenkins.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { ProcessingModule } from './modules/processing/processing.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { SettingsModule } from './modules/settings/settings.module';
     StreamModule,
     CvatModule,
     JenkinsModule,
+    ProcessingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

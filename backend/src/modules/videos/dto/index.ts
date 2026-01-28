@@ -23,6 +23,11 @@ export class BrowseItemDto {
     projectName?: string;
     stage?: string;
   };
+  processing?: {
+    jobName: string;
+    status: string;
+    startedAt: number; // Unix timestamp
+  };
 }
 
 export class VideoMetadataDto {

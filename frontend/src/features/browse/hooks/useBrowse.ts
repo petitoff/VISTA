@@ -1,7 +1,9 @@
-import { createSignal, createEffect, createMemo } from "solid-js";
+import { createSignal, createEffect, createMemo, onCleanup } from "solid-js";
 import { useSearchParams } from "@solidjs/router";
 import { api } from "@/api";
 import type { BrowseItem, BrowseResponse, SortBy, SortOrder } from "@/api/types";
+
+const POLL_INTERVAL_MS = 5000; // Poll every 5 seconds when processing
 
 export const useBrowse = (itemsPerPage: number) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -10,6 +12,7 @@ export const useBrowse = (itemsPerPage: number) => {
   const [totalPages, setTotalPages] = createSignal(1);
   const [total, setTotal] = createSignal(0);
   const [loading, setLoading] = createSignal(false);
+  let pollInterval: ReturnType<typeof setInterval> | null = null;
 
   // Derive path and page from URL params
   const currentPath = createMemo(() => {
@@ -35,13 +38,19 @@ export const useBrowse = (itemsPerPage: number) => {
     return value === "desc" ? "desc" : "asc";
   });
 
+  // Check if any items are processing
+  const hasProcessingItems = createMemo(() =>
+    items().some(item => item.processing)
+  );
+
   const loadData = async (
     path: string,
     pageNum: number,
     sort: SortBy,
-    order: SortOrder
+    order: SortOrder,
+    silent: boolean = false
   ) => {
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const data: BrowseResponse = await api.browse(
         path,
@@ -56,30 +65,67 @@ export const useBrowse = (itemsPerPage: number) => {
     } catch (err) {
       console.error("Failed to load browse data:", err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
-  // React to URL param changes
+  // Manage polling based on processing items
+  const startPolling = () => {
+    if (pollInterval) return;
+    pollInterval = setInterval(() => {
+      loadData(currentPath(), page(), sortBy(), sortOrder(), true);
+    }, POLL_INTERVAL_MS);
+  };
+
+  const stopPolling = () => {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+  };
+
+  // React to URL param changes - initial load
   createEffect(() => {
     loadData(currentPath(), page(), sortBy(), sortOrder());
   });
 
+  // Start/stop polling based on processing state
+  createEffect(() => {
+    if (hasProcessingItems()) {
+      startPolling();
+    } else {
+      stopPolling();
+    }
+  });
+
+  // Cleanup on unmount
+  onCleanup(() => {
+    stopPolling();
+  });
+
   const changePath = (path: string) => {
+    stopPolling(); // Stop polling when changing path
     setSearchParams({ path: path || undefined, page: "1" });
   };
 
   const changePage = (newPage: number) => {
+    stopPolling(); // Stop polling when changing page
     setSearchParams({ page: String(newPage) });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const changeSorting = (newSortBy: SortBy, newSortOrder: SortOrder) => {
+    stopPolling(); // Stop polling when changing sorting
     setSearchParams({
       sortBy: newSortBy,
       sortOrder: newSortOrder,
       page: "1", // Reset to first page when sorting changes
     });
+  };
+
+  // Force refresh (useful after triggering a job)
+  const refresh = () => {
+    loadData(currentPath(), page(), sortBy(), sortOrder(), true);
   };
 
   return {
@@ -91,8 +137,10 @@ export const useBrowse = (itemsPerPage: number) => {
     loading,
     sortBy,
     sortOrder,
+    hasProcessingItems,
     changePath,
     changePage,
     changeSorting,
+    refresh,
   };
 };

@@ -20,6 +20,11 @@ export interface BrowseItem {
     hasDuplicateInSameProject: boolean;
     duplicateProjectNames?: string[];
   };
+  processing?: {
+    jobName: string;
+    status: string;
+    startedAt: number;
+  };
 }
 
 export interface BrowseResponse {
