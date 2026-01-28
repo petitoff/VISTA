@@ -35,6 +35,10 @@ RUN mkdir -p .cache/thumbnails
 ENV NODE_ENV=production
 ENV PORT=3001
 
+# Copy entrypoint script
+COPY --from=builder /app/docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
+
 EXPOSE 3001
 
-CMD ["node", "dist/src/main.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
