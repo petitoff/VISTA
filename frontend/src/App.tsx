@@ -61,6 +61,7 @@ const App: Component = () => {
         onSortChange={browse.changeSorting}
         onItemClick={handleItemClick}
         onSearchResultClick={(item) => player.openVideo(item.path)}
+        onJobStarted={browse.refresh}
       />
 
       <Show when={player.selectedVideo()}>

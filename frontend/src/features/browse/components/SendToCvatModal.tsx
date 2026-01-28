@@ -6,6 +6,7 @@ import type { SendMethod, BrowseItem } from "@/api/types";
 interface SendToCvatModalProps {
     item: BrowseItem;
     onClose: () => void;
+    onSuccess?: () => void;
 }
 
 export const SendToCvatModal: Component<SendToCvatModalProps> = (props) => {
@@ -44,8 +45,14 @@ export const SendToCvatModal: Component<SendToCvatModalProps> = (props) => {
                 success: true,
                 message: `✓ Build queued: ${response.jobName}`,
             });
-            // Auto-close after success
-            setTimeout(() => props.onClose(), 1000);
+            // Auto-close after success and trigger refresh
+            setTimeout(() => {
+                if (props.onSuccess) {
+                    props.onSuccess();
+                } else {
+                    props.onClose();
+                }
+            }, 1000);
         } else {
             setResult({
                 success: false,

@@ -22,6 +22,7 @@ interface VideoGridProps {
   // Handlers
   onItemClick: (item: BrowseItem) => void;
   onSearchResultClick: (item: SearchItem) => void;
+  onJobStarted?: () => void;
 }
 
 export const VideoGrid: Component<VideoGridProps> = (props) => {
@@ -109,6 +110,7 @@ export const VideoGrid: Component<VideoGridProps> = (props) => {
                 <VideoCard
                   item={item}
                   onClick={() => props.onItemClick(item)}
+                  onJobStarted={props.onJobStarted}
                 />
               )}
             </For>

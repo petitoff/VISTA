@@ -8,6 +8,7 @@ interface VideoCardProps {
   item: BrowseItem;
   onClick: () => void;
   subtitle?: string;
+  onJobStarted?: () => void;
 }
 
 const formatSize = (bytes: number): string => {
@@ -72,9 +73,9 @@ export const VideoCard: Component<VideoCardProps> = (props) => {
                 <FiFilm size={48} class="text-text-muted" />
               </div>
             </Show>
-            {/* CVAT Status Badge */}
+            {/* CVAT/Processing Status Badges - in dark overlay strip at bottom */}
             <Show when={isVideo() && props.item.cvat}>
-              <div class="absolute top-2 right-2 flex gap-1">
+              <div class="absolute bottom-0 left-0 right-0 bg-black/80 backdrop-blur-sm px-2 py-1.5 flex gap-1 items-center justify-end">
                 {/* Duplicate Warning */}
                 <Show when={hasDuplicate()}>
                   <div
@@ -171,6 +172,10 @@ export const VideoCard: Component<VideoCardProps> = (props) => {
         <SendToCvatModal
           item={props.item}
           onClose={() => setShowSendModal(false)}
+          onSuccess={() => {
+            setShowSendModal(false);
+            props.onJobStarted?.();
+          }}
         />
       </Show>
     </>
