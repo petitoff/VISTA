@@ -1,5 +1,5 @@
-import { Component, createSignal, Show } from "solid-js";
-import { FiFolder, FiFilm, FiExternalLink, FiUpload } from "solid-icons/fi";
+import { Component, createSignal, For, Show } from "solid-js";
+import { FiFolder, FiFilm, FiExternalLink, FiUpload, FiAlertTriangle } from "solid-icons/fi";
 import { api } from "@/api";
 import type { BrowseItem } from "@/api/types";
 import { SendToCvatModal } from "./SendToCvatModal";
@@ -25,11 +25,21 @@ export const VideoCard: Component<VideoCardProps> = (props) => {
 
   const isVideo = () => props.item.type === "video";
   const hasCvat = () => props.item.cvat?.exists;
+  const hasDuplicate = () => props.item.cvat?.hasDuplicateInSameProject;
+  const occurrences = () => props.item.cvat?.occurrences || [];
+
+  // Get unique project names
+  const uniqueProjects = () => {
+    const projects = occurrences().map((o) => o.projectName);
+    return [...new Set(projects)];
+  };
 
   const handleCvatClick = (e: MouseEvent) => {
     e.stopPropagation();
-    if (props.item.cvat?.taskUrl) {
-      window.open(props.item.cvat.taskUrl, "_blank");
+    // Open first occurrence
+    const firstOcc = occurrences()[0];
+    if (firstOcc?.taskUrl) {
+      window.open(firstOcc.taskUrl, "_blank");
     }
   };
 
@@ -63,14 +73,26 @@ export const VideoCard: Component<VideoCardProps> = (props) => {
             </Show>
             {/* CVAT Status Badge */}
             <Show when={isVideo() && props.item.cvat}>
-              <div class="absolute top-2 right-2">
+              <div class="absolute top-2 right-2 flex gap-1">
+                {/* Duplicate Warning */}
+                <Show when={hasDuplicate()}>
+                  <div
+                    class="cvat-badge cvat-badge--warning"
+                    title={`⚠️ Duplikat w projekcie: ${props.item.cvat?.duplicateProjectNames?.join(", ")}`}
+                  >
+                    <FiAlertTriangle size={14} />
+                  </div>
+                </Show>
                 <Show when={hasCvat()}>
                   <button
                     class="cvat-badge cvat-badge--exists"
                     onClick={handleCvatClick}
-                    title={`Open in CVAT: ${props.item.cvat?.projectName || "Task"}`}
+                    title={`Open in CVAT (${occurrences().length} task${occurrences().length > 1 ? "s" : ""})`}
                   >
                     <span>CVAT</span>
+                    <Show when={occurrences().length > 1}>
+                      <span class="text-xs">({occurrences().length})</span>
+                    </Show>
                     <FiExternalLink size={12} />
                   </button>
                 </Show>
@@ -107,19 +129,26 @@ export const VideoCard: Component<VideoCardProps> = (props) => {
               {props.subtitle}
             </p>
           </Show>
-          {/* CVAT Project Info */}
-          <Show when={hasCvat() && props.item.cvat?.projectName}>
-            <p class="text-xs text-accent truncate mb-2" title={props.item.cvat?.projectName}>
-              📁 {props.item.cvat?.projectName}
-            </p>
+          {/* CVAT Projects List */}
+          <Show when={hasCvat() && uniqueProjects().length > 0}>
+            <div class="mb-2">
+              <For each={uniqueProjects()}>
+                {(projectName) => (
+                  <p class="text-xs text-accent truncate" title={projectName}>
+                    📁 {projectName}
+                  </p>
+                )}
+              </For>
+            </div>
           </Show>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
             <Show when={isVideo() && props.item.size}>
               <span class="metadata-badge">{formatSize(props.item.size!)}</span>
             </Show>
             <span class="metadata-badge">{isVideo() ? "MP4" : "Folder"}</span>
-            <Show when={hasCvat() && props.item.cvat?.stage}>
-              <span class="metadata-badge metadata-badge--cvat">{props.item.cvat?.stage}</span>
+            {/* Show first occurrence stage */}
+            <Show when={hasCvat() && occurrences()[0]?.stage}>
+              <span class="metadata-badge metadata-badge--cvat">{occurrences()[0]?.stage}</span>
             </Show>
           </div>
         </div>

@@ -10,10 +10,15 @@ export interface BrowseItem {
   modifiedAt?: number;
   cvat?: {
     exists: boolean;
-    taskId?: number;
-    taskUrl?: string;
-    projectName?: string;
-    stage?: string;
+    occurrences: Array<{
+      taskId: number;
+      taskUrl: string;
+      projectId: number | null;
+      projectName: string;
+      stage?: string;
+    }>;
+    hasDuplicateInSameProject: boolean;
+    duplicateProjectNames?: string[];
   };
 }
 

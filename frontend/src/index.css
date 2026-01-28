@@ -154,6 +154,13 @@ body {
   border: 1px solid var(--color-border);
 }
 
+.cvat-badge--warning {
+  background: rgba(255, 80, 80, 0.9);
+  color: #ffffff;
+  border: none;
+  cursor: help;
+}
+
 /* NVIDIA-style modal */
 .modal-overlay {
   position: fixed;
@@ -176,12 +183,10 @@ body {
 }
 
 .loading-shimmer {
-  background: linear-gradient(
-    90deg,
-    var(--color-bg-tertiary) 25%,
-    var(--color-bg-hover) 50%,
-    var(--color-bg-tertiary) 75%
-  );
+  background: linear-gradient(90deg,
+      var(--color-bg-tertiary) 25%,
+      var(--color-bg-hover) 50%,
+      var(--color-bg-tertiary) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -190,6 +195,7 @@ body {
   0% {
     background-position: 200% 0;
   }
+
   100% {
     background-position: -200% 0;
   }
@@ -268,8 +274,13 @@ body {
 
 /* Spin animation for loading */
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .animate-spin {

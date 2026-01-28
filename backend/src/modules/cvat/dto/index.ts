@@ -20,11 +20,18 @@ export interface CvatTaskResult {
     url: string;
 }
 
+export interface CvatOccurrence {
+    taskId: number;
+    taskUrl: string;
+    projectId: number | null;
+    projectName: string;
+    stage?: string;
+}
+
 export interface CvatVideoStatus {
     exists: boolean;
-    taskId?: number;
-    taskUrl?: string;
-    projectName?: string;
-    stage?: string;
+    occurrences: CvatOccurrence[];
+    hasDuplicateInSameProject: boolean;
+    duplicateProjectNames?: string[];
 }
 
