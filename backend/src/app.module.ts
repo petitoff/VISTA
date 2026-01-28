@@ -4,23 +4,28 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import videosConfig from './config/videos.config';
-import cvatConfig from './config/cvat.config';
+import { PrismaModule } from './prisma/prisma.module';
 import { VideosModule } from './modules/videos/videos.module';
 import { ThumbnailsModule } from './modules/thumbnails/thumbnails.module';
 import { StreamModule } from './modules/stream/stream.module';
 import { CvatModule } from './modules/cvat/cvat.module';
+import { JenkinsModule } from './modules/jenkins/jenkins.module';
+import { SettingsModule } from './modules/settings/settings.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [videosConfig, cvatConfig],
+      load: [videosConfig],
     }),
     ScheduleModule.forRoot(),
+    PrismaModule,
+    SettingsModule,
     VideosModule,
     ThumbnailsModule,
     StreamModule,
     CvatModule,
+    JenkinsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

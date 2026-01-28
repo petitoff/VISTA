@@ -1,5 +1,5 @@
 import { Component, JSX } from "solid-js";
-import { FiVideo, FiHardDrive } from "solid-icons/fi";
+import { FiVideo, FiSettings } from "solid-icons/fi";
 
 interface AppLayoutProps {
   headerRight?: JSX.Element;
@@ -26,13 +26,15 @@ export const AppLayout: Component<AppLayoutProps> = (props) => {
 
           <div class="flex-1 max-w-xl">{props.searchBar}</div>
 
-          <div class="flex items-center gap-2 text-sm text-text-secondary">
-            {props.headerRight || (
-              <>
-                <FiHardDrive size={16} />
-                <span>Local Storage</span>
-              </>
-            )}
+          <div class="flex items-center gap-4">
+            {props.headerRight}
+            <a
+              href="/settings"
+              class="p-2 text-text-muted hover:text-accent transition-colors"
+              title="Settings"
+            >
+              <FiSettings size={20} />
+            </a>
           </div>
         </div>
       </header>

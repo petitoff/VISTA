@@ -52,3 +52,45 @@ export interface SearchItem {
   hostPath: string;
   directory: string;
 }
+
+// Jenkins integration types
+export type SendMethod = "roi" | "direct";
+
+export interface SendToCvatRequest {
+  videoPath: string;
+  method: SendMethod;
+  cvatProject: string;
+  cvatOrg: string;
+  modelName?: string;
+  confidence?: number;
+  padding?: number;
+  assigneeId?: string;
+}
+
+export interface TriggerResponse {
+  success: boolean;
+  queueUrl?: string;
+  error?: string;
+  jobName?: string;
+}
+
+export interface JenkinsStatus {
+  configured: boolean;
+}
+
+// Settings types
+export interface Settings {
+  cvatUrl: string | null;
+  cvatUsername: string | null;
+  cvatPassword: string | null;
+  cvatCacheTimeoutMs: number;
+  jenkinsUrl: string | null;
+  jenkinsUsername: string | null;
+  jenkinsApiToken: string | null;
+}
+
+export interface SettingsStatus {
+  cvat: boolean;
+  jenkins: boolean;
+}
+

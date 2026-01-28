@@ -1,4 +1,27 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vista-db
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: vista
+      POSTGRES_USER: vista
+      POSTGRES_PASSWORD: vista_secret
+    command: postgres -c shared_buffers=32MB -c work_mem=4MB -c max_connections=20
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    volumes:
+      - vista-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vista -d vista"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build: ./backend
     container_name: vista-backend
@@ -10,16 +33,15 @@ services:
       - VIDEOS_ROOT_PATH=/data/videos
       - VIDEOS_HOST_PATH=${VIDEOS_PATH:-/home/petitoff/Videos}
       - CACHE_MAX_SIZE_MB=${CACHE_MAX_SIZE_MB:-2048}
-      # CVAT Integration
-      - CVAT_URL=${CVAT_URL:-}
-      - CVAT_USERNAME=${CVAT_USERNAME:-}
-      - CVAT_PASSWORD=${CVAT_PASSWORD:-}
-      - CVAT_CACHE_TIMEOUT_MS=${CVAT_CACHE_TIMEOUT_MS:-5000}
+      - DATABASE_URL=postgresql://vista:vista_secret@postgres:5432/vista
     volumes:
       # Mount video dataset from env
       - ${VIDEOS_PATH:-/home/petitoff/Videos}:/data/videos:ro
       # Persist thumbnail cache
       - vista-cache:/app/.cache
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/"]
       interval: 30s
@@ -37,3 +59,4 @@ services:
 
 volumes:
   vista-cache:
+  vista-db:

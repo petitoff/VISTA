@@ -5,6 +5,7 @@ import { Router, Route } from "@solidjs/router";
 import "solid-devtools";
 
 import App from "./App";
+import { SettingsPage } from "./pages/SettingsPage";
 
 const root = document.getElementById("root");
 
@@ -17,6 +18,7 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
 render(
   () => (
     <Router>
+      <Route path="/settings" component={SettingsPage} />
       <Route path="*" component={App} />
     </Router>
   ),

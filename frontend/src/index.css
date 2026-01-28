@@ -204,3 +204,74 @@ body {
   background: var(--color-accent);
   color: #000000;
 }
+
+/* Send to CVAT badge (interactive) */
+.cvat-badge--send {
+  background: rgba(118, 185, 0, 0.2);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  cursor: pointer;
+}
+
+.cvat-badge--send:hover {
+  background: var(--color-accent);
+  color: #000000;
+  transform: scale(1.05);
+}
+
+/* Form elements */
+.form-input {
+  width: 100%;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: 0;
+  padding: 0.625rem 0.75rem;
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.form-input:focus {
+  border-color: var(--color-accent);
+}
+
+.form-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* Method selector buttons */
+.method-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: 0;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.method-button:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text-primary);
+}
+
+.method-button--active {
+  background: rgba(118, 185, 0, 0.15);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* Spin animation for loading */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}

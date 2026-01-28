@@ -115,7 +115,8 @@ export class VideosService {
     const items = allItems.slice(startIdx, startIdx + limit);
 
     // Enrich video items with CVAT status (only if CVAT is configured)
-    if (this.cvatService.isConfigured()) {
+    const cvatConfigured = await this.cvatService.isConfigured();
+    if (cvatConfigured) {
       const videoItems = items.filter((item) => item.type === 'video');
       if (videoItems.length > 0) {
         const filenames = videoItems.map((item) => item.name);

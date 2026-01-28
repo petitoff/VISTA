@@ -1,17 +1,15 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, Logger } from '@nestjs/common';
+import { SettingsService } from '../settings/settings.service';
+import type { CvatConfig } from '../settings/dto';
 import { CvatTasksResponse, CvatVideoStatus } from './dto';
 
 @Injectable()
-export class CvatService implements OnModuleInit {
+export class CvatService {
     private readonly logger = new Logger(CvatService.name);
-    private readonly baseUrl: string;
-    private readonly username: string;
-    private readonly password: string;
-    private readonly cacheTimeoutMs: number;
 
     private authToken: string | null = null;
     private tokenExpiry: number = 0;
+    private currentConfig: CvatConfig | null = null;
 
     // Cache for task lookups: Map<taskName, { status: CvatVideoStatus, expiry: number }>
     private taskCache = new Map<string, { status: CvatVideoStatus; expiry: number }>();
@@ -19,35 +17,29 @@ export class CvatService implements OnModuleInit {
     // Cache for project names: Map<projectId, projectName>
     private projectCache = new Map<number, string>();
 
-    constructor(private configService: ConfigService) {
-        this.baseUrl = this.configService.get<string>('cvat.url')!;
-        this.username = this.configService.get<string>('cvat.username')!;
-        this.password = this.configService.get<string>('cvat.password')!;
-        this.cacheTimeoutMs = this.configService.get<number>('cvat.cacheTimeoutMs')!;
+    constructor(private settingsService: SettingsService) { }
+
+    /**
+     * Get current CVAT config from database
+     */
+    private async getConfig(): Promise<CvatConfig | null> {
+        return this.settingsService.getCvatConfig();
     }
 
-    async onModuleInit() {
-        if (this.username && this.password) {
-            try {
-                await this.authenticate();
-                this.logger.log(`Connected to CVAT at ${this.baseUrl}`);
-            } catch (error) {
-                this.logger.warn(`Failed to connect to CVAT: ${error.message}`);
-            }
-        } else {
-            this.logger.warn('CVAT credentials not configured');
-        }
+    async isConfigured(): Promise<boolean> {
+        const config = await this.getConfig();
+        return config !== null;
     }
 
-    private async authenticate(): Promise<void> {
-        const response = await fetch(`${this.baseUrl}/api/auth/login`, {
+    private async authenticate(config: CvatConfig): Promise<void> {
+        const response = await fetch(`${config.url}/api/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                username: this.username,
-                password: this.password,
+                username: config.username,
+                password: config.password,
             }),
         });
 
@@ -57,14 +49,28 @@ export class CvatService implements OnModuleInit {
 
         const data = await response.json();
         this.authToken = data.key;
+        this.currentConfig = config;
         // Token valid for 1 hour
         this.tokenExpiry = Date.now() + 3600000;
     }
 
-    private async ensureAuthenticated(): Promise<void> {
-        if (!this.authToken || Date.now() >= this.tokenExpiry) {
-            await this.authenticate();
+    private async ensureAuthenticated(): Promise<CvatConfig> {
+        const config = await this.getConfig();
+        if (!config) {
+            throw new Error('CVAT not configured');
         }
+
+        // Re-authenticate if token expired or config changed
+        const configChanged =
+            !this.currentConfig ||
+            this.currentConfig.url !== config.url ||
+            this.currentConfig.username !== config.username;
+
+        if (!this.authToken || Date.now() >= this.tokenExpiry || configChanged) {
+            await this.authenticate(config);
+        }
+
+        return config;
     }
 
     private getHeaders(): Record<string, string> {
@@ -88,9 +94,9 @@ export class CvatService implements OnModuleInit {
         }
 
         try {
-            await this.ensureAuthenticated();
+            const config = await this.ensureAuthenticated();
 
-            const response = await fetch(`${this.baseUrl}/api/projects/${projectId}`, {
+            const response = await fetch(`${config.url}/api/projects/${projectId}`, {
                 method: 'GET',
                 headers: this.getHeaders(),
             });
@@ -117,9 +123,9 @@ export class CvatService implements OnModuleInit {
      */
     private async getTaskStage(taskId: number): Promise<string | undefined> {
         try {
-            await this.ensureAuthenticated();
+            const config = await this.ensureAuthenticated();
 
-            const response = await fetch(`${this.baseUrl}/api/jobs?task_id=${taskId}`, {
+            const response = await fetch(`${config.url}/api/jobs?task_id=${taskId}`, {
                 method: 'GET',
                 headers: this.getHeaders(),
             });
@@ -144,6 +150,11 @@ export class CvatService implements OnModuleInit {
      * Find a task by exact name match
      */
     async findTaskByName(taskName: string): Promise<CvatVideoStatus> {
+        const config = await this.getConfig();
+        if (!config) {
+            return { exists: false };
+        }
+
         // Check cache first
         const cached = this.taskCache.get(taskName);
         if (cached && Date.now() < cached.expiry) {
@@ -153,7 +164,7 @@ export class CvatService implements OnModuleInit {
         try {
             await this.ensureAuthenticated();
 
-            const url = new URL(`${this.baseUrl}/api/tasks`);
+            const url = new URL(`${config.url}/api/tasks`);
             url.searchParams.set('name', taskName);
 
             const response = await fetch(url.toString(), {
@@ -187,7 +198,7 @@ export class CvatService implements OnModuleInit {
                     status = {
                         exists: true,
                         taskId: exactMatch.id,
-                        taskUrl: `${this.baseUrl}/tasks/${exactMatch.id}`,
+                        taskUrl: `${config.url}/tasks/${exactMatch.id}`,
                         projectName,
                         stage,
                     };
@@ -201,7 +212,7 @@ export class CvatService implements OnModuleInit {
             // Cache the result
             this.taskCache.set(taskName, {
                 status,
-                expiry: Date.now() + this.cacheTimeoutMs,
+                expiry: Date.now() + config.cacheTimeoutMs,
             });
 
             return status;
@@ -228,6 +239,16 @@ export class CvatService implements OnModuleInit {
     ): Promise<Map<string, CvatVideoStatus>> {
         const results = new Map<string, CvatVideoStatus>();
 
+        // Check if configured first
+        const isConfigured = await this.isConfigured();
+        if (!isConfigured) {
+            // Return empty statuses if not configured
+            for (const filename of filenames) {
+                results.set(filename, { exists: false });
+            }
+            return results;
+        }
+
         // Process in parallel with concurrency limit
         const BATCH_SIZE = 10;
         for (let i = 0; i < filenames.length; i += BATCH_SIZE) {
@@ -240,12 +261,5 @@ export class CvatService implements OnModuleInit {
         }
 
         return results;
-    }
-
-    /**
-     * Check if CVAT connection is available
-     */
-    isConfigured(): boolean {
-        return Boolean(this.username && this.password && this.baseUrl);
     }
 }

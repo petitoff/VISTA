@@ -1,0 +1,28 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Application settings - single row with id="default"
+model Settings {
+  id        String   @id @default("default")
+  
+  // CVAT Integration
+  cvatUrl      String?
+  cvatUsername String?
+  cvatPassword String?
+  cvatCacheTimeoutMs Int @default(5000)
+  
+  // Jenkins Integration  
+  jenkinsUrl      String?
+  jenkinsUsername String?
+  jenkinsApiToken String?
+  
+  updatedAt DateTime @updatedAt
+}

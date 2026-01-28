@@ -1,7 +1,8 @@
 import { Component, createSignal, Show } from "solid-js";
-import { FiFolder, FiFilm, FiExternalLink } from "solid-icons/fi";
+import { FiFolder, FiFilm, FiExternalLink, FiUpload } from "solid-icons/fi";
 import { api } from "@/api";
 import type { BrowseItem } from "@/api/types";
+import { SendToCvatModal } from "./SendToCvatModal";
 
 interface VideoCardProps {
   item: BrowseItem;
@@ -20,6 +21,7 @@ const formatSize = (bytes: number): string => {
 export const VideoCard: Component<VideoCardProps> = (props) => {
   const [imageLoaded, setImageLoaded] = createSignal(false);
   const [imageError, setImageError] = createSignal(false);
+  const [showSendModal, setShowSendModal] = createSignal(false);
 
   const isVideo = () => props.item.type === "video";
   const hasCvat = () => props.item.cvat?.exists;
@@ -31,83 +33,105 @@ export const VideoCard: Component<VideoCardProps> = (props) => {
     }
   };
 
+  const handleSendClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    setShowSendModal(true);
+  };
+
   return (
-    <div class="video-card" onClick={props.onClick}>
-      <Show when={isVideo()}>
-        <div class="relative aspect-video bg-bg-tertiary">
-          <Show when={!imageLoaded() && !imageError()}>
-            <div class="absolute inset-0 loading-shimmer" />
-          </Show>
-          <Show when={!imageError()}>
-            <img
-              src={api.getThumbnailUrl(props.item.path)}
-              alt={props.item.name}
-              class="w-full h-full object-cover"
-              classList={{ "opacity-0": !imageLoaded() }}
-              onLoad={() => setImageLoaded(true)}
-              onError={() => setImageError(true)}
-            />
-          </Show>
-          <Show when={imageError()}>
-            <div class="absolute inset-0 flex items-center justify-center">
-              <FiFilm size={48} class="text-text-muted" />
-            </div>
-          </Show>
-          {/* CVAT Status Badge */}
-          <Show when={isVideo() && props.item.cvat}>
-            <div class="absolute top-2 right-2">
-              <Show when={hasCvat()}>
-                <button
-                  class="cvat-badge cvat-badge--exists"
-                  onClick={handleCvatClick}
-                  title={`Open in CVAT: ${props.item.cvat?.projectName || "Task"}`}
-                >
-                  <span>CVAT</span>
-                  <FiExternalLink size={12} />
-                </button>
-              </Show>
-              <Show when={!hasCvat()}>
-                <span class="cvat-badge cvat-badge--missing">Not in CVAT</span>
-              </Show>
-            </div>
-          </Show>
-        </div>
-      </Show>
-
-      <Show when={!isVideo()}>
-        <div class="aspect-video bg-bg-tertiary flex items-center justify-center">
-          <FiFolder size={64} class="text-accent" />
-        </div>
-      </Show>
-
-      <div class="p-3">
-        <h3 class="font-medium text-sm truncate mb-1" title={props.item.name}>
-          {props.item.name}
-        </h3>
-        <Show when={props.subtitle}>
-          <p
-            class="text-xs text-text-secondary truncate mb-2"
-            title={props.subtitle}
-          >
-            {props.subtitle}
-          </p>
+    <>
+      <div class="video-card" onClick={props.onClick}>
+        <Show when={isVideo()}>
+          <div class="relative aspect-video bg-bg-tertiary">
+            <Show when={!imageLoaded() && !imageError()}>
+              <div class="absolute inset-0 loading-shimmer" />
+            </Show>
+            <Show when={!imageError()}>
+              <img
+                src={api.getThumbnailUrl(props.item.path)}
+                alt={props.item.name}
+                class="w-full h-full object-cover"
+                classList={{ "opacity-0": !imageLoaded() }}
+                onLoad={() => setImageLoaded(true)}
+                onError={() => setImageError(true)}
+              />
+            </Show>
+            <Show when={imageError()}>
+              <div class="absolute inset-0 flex items-center justify-center">
+                <FiFilm size={48} class="text-text-muted" />
+              </div>
+            </Show>
+            {/* CVAT Status Badge */}
+            <Show when={isVideo() && props.item.cvat}>
+              <div class="absolute top-2 right-2">
+                <Show when={hasCvat()}>
+                  <button
+                    class="cvat-badge cvat-badge--exists"
+                    onClick={handleCvatClick}
+                    title={`Open in CVAT: ${props.item.cvat?.projectName || "Task"}`}
+                  >
+                    <span>CVAT</span>
+                    <FiExternalLink size={12} />
+                  </button>
+                </Show>
+                <Show when={!hasCvat()}>
+                  <button
+                    class="cvat-badge cvat-badge--send"
+                    onClick={handleSendClick}
+                    title="Send to CVAT"
+                  >
+                    <FiUpload size={12} />
+                    <span>Send to CVAT</span>
+                  </button>
+                </Show>
+              </div>
+            </Show>
+          </div>
         </Show>
-        {/* CVAT Project Info */}
-        <Show when={hasCvat() && props.item.cvat?.projectName}>
-          <p class="text-xs text-accent truncate mb-2" title={props.item.cvat?.projectName}>
-            📁 {props.item.cvat?.projectName}
-          </p>
+
+        <Show when={!isVideo()}>
+          <div class="aspect-video bg-bg-tertiary flex items-center justify-center">
+            <FiFolder size={64} class="text-accent" />
+          </div>
         </Show>
-        <div class="flex items-center gap-2">
-          <Show when={isVideo() && props.item.size}>
-            <span class="metadata-badge">{formatSize(props.item.size!)}</span>
+
+        <div class="p-3">
+          <h3 class="font-medium text-sm truncate mb-1" title={props.item.name}>
+            {props.item.name}
+          </h3>
+          <Show when={props.subtitle}>
+            <p
+              class="text-xs text-text-secondary truncate mb-2"
+              title={props.subtitle}
+            >
+              {props.subtitle}
+            </p>
           </Show>
-          <span class="metadata-badge">{isVideo() ? "MP4" : "Folder"}</span>
-          <Show when={hasCvat() && props.item.cvat?.stage}>
-            <span class="metadata-badge metadata-badge--cvat">{props.item.cvat?.stage}</span>
+          {/* CVAT Project Info */}
+          <Show when={hasCvat() && props.item.cvat?.projectName}>
+            <p class="text-xs text-accent truncate mb-2" title={props.item.cvat?.projectName}>
+              📁 {props.item.cvat?.projectName}
+            </p>
           </Show>
+          <div class="flex items-center gap-2">
+            <Show when={isVideo() && props.item.size}>
+              <span class="metadata-badge">{formatSize(props.item.size!)}</span>
+            </Show>
+            <span class="metadata-badge">{isVideo() ? "MP4" : "Folder"}</span>
+            <Show when={hasCvat() && props.item.cvat?.stage}>
+              <span class="metadata-badge metadata-badge--cvat">{props.item.cvat?.stage}</span>
+            </Show>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Send to CVAT Modal */}
+      <Show when={showSendModal()}>
+        <SendToCvatModal
+          item={props.item}
+          onClose={() => setShowSendModal(false)}
+        />
+      </Show>
+    </>
   );
 };
